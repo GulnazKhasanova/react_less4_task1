@@ -1,144 +1,71 @@
-import { useState, useRef } from 'react';
-// import Select from 'react-select';
+import * as yup from 'yup';
+import { yupResolver } from '@hookform/resolvers/yup';
+import { useForm } from 'react-hook-form';
 import styles from './App.module.css';
+
+const fieldsSchema =  yup.object()
+	.shape({
+		login: yup.string()
+			.matches(/^[\w_]*$/, 'Неверный логин. Вы ввели недопустимые символы')
+			.min(3, 'Неверный логин. Длина не может быть меньше 3 символов')
+			.max(20, 'Неверный логин. Должно быть не больше 20 символов'),
+		passwd: yup.string()
+			.required("Password is required")
+			.min(3, 'Неверный пароль. Длина не может быть меньше 3 символов')
+			.oneOf([yup.ref("confirm")], "Passwords do not match"),
+		confirm: yup.string()
+			.required("Confirm Password is required")
+			.oneOf([yup.ref("passwd")], "Passwords do not match"),
+	})
 
 
 export const App = () => {
+	const {
+		register,    // для регистрации пропов инпута
+		handleSubmit,
+		formState: { errors }
+	} = useForm({
+			mode: "onTouched",
+			defaultValues: {
+				login: '',
+				confirm: '',
+			},
+			resolver: yupResolver(fieldsSchema)
+		});
 
-	const [login, setLogin] = useState('');
-	const [formError, setFormError] = useState({});
-	const [loginError, setLoginError] = useState(null);
-	const [passwdError, setPasswdError] = useState(null);
+	const formError = {
+		loginError : errors.login?.message,
+		passwdError: errors.passwd?.message,
+		confirmError : errors.confirm?.message,
+	};
+	let em = true
+	em = Object.values(formError).every((el) => el === undefined)
 
-	const submitButtonRef = useRef(null);
-
-	const [passwd, setPasswd] = useState('');
-	const [confirm, setConfirm] = useState('');
-
-	const [disabl, setDisabl] = useState(true);
-
-	const checkedPass = (target, variable) => {
-
-		let error = null;
-		if(variable !== target) {
-			error = 'Введенное значение не совпадает с паролем. Попробуйте еще раз.'
-			setPasswdError(error);
-			setFormError({...formError, passwdError: error })
-			disabledCheck({...formError, passwdError: error })
-
-		} else {
-			setFormError({...formError,  passwdError: null })
-			disabledCheck({...formError, passwdError: error })
-			setPasswdError(null)
-			submitButtonRef.current.focus();
-		}
-		return error
-	}
-
-	const onLoginChange = ({ target }) => {
-		setLogin(target.value);
-
-		let error = null;
-		if(!/^[\w_]*$/.test(target.value)) {
-			error = 'Неверный логин. Вы ввели недопустимые символы'
-
-		} else if(target.value.length > 20) {
-			error = 'Неверный логин. Должно быть не больше 20 символов'
-		}
-		setLoginError(error);
-		setFormError({...formError,  loginError: error});
-
-		if(target.value.length === 20){
-			setFormError( {...formError,  loginError:null })
-		}
-		disabledCheck(formError)
-	}
-
-	const onSubmit = (event) => {
-		event.preventDefault();
-		console.log(login, passwd)
-	}
-	const onLoginBlur =() => {
-		let error = loginError;
-		if(login.length <3){
-			error = 'Неверный логин. Длина не может быть меньше 3 символов';
-			setLoginError(error);
-			setFormError({...formError,  loginError: error });
-		} else {
-			setFormError( {...formError,  loginError:null })
-		}
-		disabledCheck(formError);
-	}
-
-	const onPasswdBlur = ({ target }) => {
-		setPasswd(target.value);
-
-		if(target.value.length < 3) {
-			setPasswdError('Неверный пароль. Пароль не должен быть меньше 3 символов.')
-		} else {
-			checkedPass(target.value, confirm)
-		}
-	}
-
-	const onComfirmBlur = ({ target }) => {
-		setConfirm(target.value);
-		checkedPass(target.value, passwd)
-	}
-
-
-	const disabledCheck = (formError) => {
-		if(Object.keys(formError).length < 2) {
-
-			return setDisabl(true);
-
-		} else if(Object.keys(formError).length === 2 ){
-
-			let res = Object.values(formError).every( el => {
-				return el === null})
-
-			return setDisabl(!res)
-		}
-
+	const onSubmit = (formData) => {
+		console.log(formData)
 	}
 
 	return (
 		<div className={styles.app}>
-		<form onSubmit={onSubmit}>
-			{loginError && <div className={styles.errorLabel}>{loginError}</div>}
-			<label className ={styles.subtitle}> Login</label>
-			<input
-				name="login"
-				type="text"
-				value={login}
-				onChange={onLoginChange}
-				onBlur={onLoginBlur}
-				placeholder="login"
-				/>
-			{passwdError && <div className={styles.errorLabel}>{passwdError}</div>}
-			<label className ={styles.subtitle}> Password</label>
-			<input
-				name="password"
-				type="text"
-				value={passwd}
-				onChange={onPasswdBlur}
-				placeholder="password"
-				/>
-			<label className ={styles.subtitle}> Confirmation</label>
-			<input
-				name="confirm"
-				type="text"
-				value={confirm}
-				onChange={onComfirmBlur}
-				placeholder="confirmation"
-				/>
-			<button
-				className= {!disabl ? styles.buyBtn + ' ' + styles.buyBtnPrice + ' ' + styles.buyBtnText : styles.buyBtnPrice + ' ' + styles.buyDis }
-				ref={ submitButtonRef }
+			{/* {loginError && <div className={styles.errorLabel}>{loginError}</div>} */}
+			<form onSubmit={handleSubmit(onSubmit)}>
+				{formError.loginError && <div className={styles.errorLabel}>{formError.loginError}</div>}
+				<label className ={styles.subtitle}> Login</label>
+				<input name="login" type="text" {...register('login')}/>
+				{formError.passwdError && <div className={styles.errorLabel}>{formError.passwdError}</div>}
+				<label className ={styles.subtitle}> Password</label>
+				<input name="passwd" type="text" {...register('passwd')}/>
+				{formError.confirmError && <div className={styles.errorLabel}>{formError.confirmError}</div>}
+				<label className ={styles.subtitle}> Confirmation</label>
+				<input name="confirm" type="text" {...register('confirm')}/>
+				<button
+				className= { em ? styles.buyBtn + ' ' + styles.buyBtnPrice + ' ' + styles.buyBtnText : styles.buyBtnPrice + ' ' + styles.buyDis }
 				type="submit"
-				disabled={disabl}
-				>Отправить</button>
-		</form>
-	</div>)
+				disabled={!em} > ОТПРАВИТЬ</button>
+			</form>
+
+		</div>
+		)
 }
 
 
